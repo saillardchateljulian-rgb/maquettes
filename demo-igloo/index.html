@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>Emeraude Paysage — L'expérience</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600&family=Fraunces:ital,opsz,wght@1,9..144,300&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#070b09; --w:#eef0ea; --muted:rgba(238,240,234,.6); --faint:rgba(238,240,234,.32);
+    --hair:rgba(238,240,234,.14); --gold:#d9b26a; --leaf:#69c98f;
+    --ease:cubic-bezier(.19,1,.22,1);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--w);
+    -webkit-font-smoothing:antialiased;overflow-x:hidden}
+  a{color:var(--w)}
+  .it{font-family:'Fraunces',serif;font-style:italic;font-weight:300}
+
+  /* Canvas 3D fixe */
+  #gl{position:fixed;inset:0;z-index:1}
+
+  /* Hauteur de scroll qui pilote le voyage */
+  .journey{height:520svh}
+
+  /* Loader */
+  #loader{position:fixed;inset:0;z-index:200;background:var(--bg);display:flex;
+    flex-direction:column;align-items:center;justify-content:center;gap:18px;
+    transition:opacity .9s var(--ease),visibility .9s}
+  #loader.done{opacity:0;visibility:hidden}
+  #loader .dashes{font-family:'Inter Tight',monospace;font-size:15px;letter-spacing:3px;
+    color:var(--w);text-shadow:0 0 14px rgba(238,240,234,.8)}
+  #loader .name{font-family:'Fraunces',serif;font-style:italic;font-weight:300;
+    font-size:15px;color:var(--muted)}
+
+  /* Bandeau maquette */
+  .bandeau{position:fixed;top:0;left:0;right:0;z-index:120;background:rgba(7,11,9,.85);
+    border-bottom:1px solid var(--hair);color:var(--muted);text-align:center;
+    font-size:11px;letter-spacing:.5px;padding:8px 14px}
+  .bandeau b{color:var(--w);font-weight:500}
+
+  /* HUD */
+  .hud{position:fixed;z-index:110;pointer-events:none}
+  .hud a{pointer-events:auto}
+  .hud-top{top:44px;left:0;right:0;display:flex;justify-content:space-between;
+    align-items:baseline;padding:16px 4vw}
+  .marque{display:flex;align-items:baseline;gap:7px;text-decoration:none}
+  .marque b{font-family:'Inter Tight',sans-serif;font-weight:600;font-size:16.5px}
+  .marque i{font-family:'Fraunces',serif;font-style:italic;font-weight:300;
+    font-size:16.5px;color:var(--muted)}
+  .h-tel{font-size:13px;color:var(--w);text-decoration:underline;
+    text-underline-offset:4px;text-decoration-color:var(--faint)}
+  .chap{right:4vw;bottom:26px;text-align:right;font-size:11px;letter-spacing:2.5px;
+    text-transform:uppercase;color:var(--faint)}
+  .chap b{display:block;font-family:'Fraunces',serif;font-style:italic;font-weight:300;
+    font-size:15px;color:var(--muted);letter-spacing:.5px;text-transform:none;margin-top:4px}
+  .pline{left:0;top:0;bottom:0;width:2px;background:rgba(238,240,234,.08)}
+  .pline i{position:absolute;top:0;left:0;width:100%;height:0%;background:var(--gold);opacity:.8}
+  .hint{left:50%;bottom:22px;transform:translateX(-50%);font-size:11px;letter-spacing:3px;
+    text-transform:uppercase;color:var(--faint);animation:hpulse 2.2s ease-in-out infinite;
+    transition:opacity .6s}
+  @keyframes hpulse{0%,100%{transform:translate(-50%,0)}50%{transform:translate(-50%,7px)}}
+
+  /* Étapes narratives */
+  .stage{position:fixed;z-index:100;left:6vw;top:50%;transform:translateY(-40%);
+    max-width:560px;opacity:0;pointer-events:none;transition:none}
+  .stage .kick{display:flex;align-items:center;gap:12px;text-transform:uppercase;
+    letter-spacing:4px;font-size:11px;font-weight:600;color:var(--gold);margin-bottom:20px}
+  .stage .kick::before{content:"";width:34px;height:1px;background:var(--gold)}
+  .stage h2{font-family:'Inter Tight',sans-serif;font-weight:500;
+    font-size:clamp(38px,6.4vw,86px);line-height:1;letter-spacing:-.03em;margin-bottom:20px}
+  .stage h2 .it{color:var(--w)}
+  .stage p{font-size:15px;line-height:1.75;color:var(--muted);max-width:42ch}
+  .stage .rows{margin-top:8px;border-top:1px solid var(--hair)}
+  .stage .rows div{display:flex;justify-content:space-between;align-items:baseline;
+    padding:15px 0;border-bottom:1px solid var(--hair);font-family:'Inter Tight',sans-serif;
+    font-weight:500;font-size:clamp(19px,2.6vw,28px);letter-spacing:-.02em}
+  .stage .rows i{font-family:'Fraunces',serif;font-style:italic;font-weight:300;
+    font-size:13px;color:var(--faint)}
+  .facts{display:flex;gap:34px;margin-top:26px;flex-wrap:wrap}
+  .facts div{border-top:1px solid var(--hair);padding-top:12px;min-width:110px}
+  .facts b{font-family:'Inter Tight',sans-serif;font-weight:500;font-size:30px;display:block}
+  .facts span{font-size:11.5px;color:var(--muted)}
+  .tel-line{display:inline-block;margin-top:26px;font-family:'Inter Tight',sans-serif;
+    font-weight:500;font-size:clamp(30px,5.4vw,58px);letter-spacing:-.03em;color:var(--w);
+    text-decoration:none;border-bottom:2px solid var(--faint);padding-bottom:8px}
+  .tel-line:hover{border-color:var(--gold)}
+  .lnk{display:inline-block;margin-top:20px;color:var(--w);font-size:14px;font-weight:500;
+    text-decoration:underline;text-underline-offset:6px;text-decoration-color:var(--faint)}
+
+  /* Barre Julian */
+  .cta-julian{position:fixed;bottom:0;left:0;right:0;z-index:130;display:flex;align-items:center;
+    justify-content:center;gap:14px;padding:13px 16px;background:rgba(7,11,9,.9);
+    border-top:1px solid var(--hair);font-size:12.5px;color:var(--muted)}
+  .cta-julian .it{color:var(--w);font-size:13.5px}
+  .cta-julian a{color:var(--w);font-weight:600;font-size:12.5px;text-decoration:underline;
+    text-underline-offset:5px;text-decoration-color:var(--faint);white-space:nowrap}
+  @media(max-width:700px){
+    .cta-julian .hide-m{display:none}
+    .stage{left:5vw;right:5vw;max-width:none}
+    .chap{bottom:64px}
+    .hint{bottom:60px}
+  }
+</style>
+</head>
+<body>
+
+<div id="loader"><div class="dashes" id="dash">──────────</div><div class="name">Emeraude <span class="it">Paysage</span></div></div>
+
+<canvas id="gl"></canvas>
+<div class="journey"></div>
+
+<div class="bandeau">Maquette réalisée pour <b>Emeraude Paysage</b> — si elle vous plaît, elle est à vous, offerte.</div>
+
+<div class="hud hud-top">
+  <a class="marque" href="#"><b>Emeraude</b><i>Paysage</i></a>
+  <a class="h-tel" href="tel:+33623115509">06 23 11 55 09</a>
+</div>
+<div class="hud pline"><i id="pfill"></i></div>
+<div class="hud chap" id="chap">Chapitre 01<b>L'arbre</b></div>
+<div class="hud hint" id="hint">Défiler</div>
+
+<div class="stage" data-seg="0">
+  <div class="kick">Paysagiste & jardinier — Nice</div>
+  <h2>Créer. Entretenir. <span class="it">Sublimer.</span></h2>
+  <p>Création, entretien et embellissement de jardins à Nice.
+    Un travail d'artisan, un devis clair, un résultat qui dure.</p>
+</div>
+
+<div class="stage" data-seg="1">
+  <div class="kick">Savoir-faire</div>
+  <h2>Ce que nous <span class="it">cultivons.</span></h2>
+  <div class="rows">
+    <div>Création & aménagement <i>01</i></div>
+    <div>Entretien de jardin <i>02</i></div>
+    <div>Taille & élagage <i>03</i></div>
+  </div>
+</div>
+
+<div class="stage" data-seg="2">
+  <div class="kick">La méthode</div>
+  <h2>Simple, claire, <span class="it">sans surprise.</span></h2>
+  <p>Visite, écoute, chiffrage précis — puis un chantier propre et un suivi qui dure.</p>
+  <div class="facts">
+    <div><b>48 h</b><span>pour votre devis</span></div>
+    <div><b>100 %</b><span>artisan local</span></div>
+    <div><b>30 km</b><span>autour de Nice</span></div>
+  </div>
+</div>
+
+<div class="stage" data-seg="3">
+  <div class="kick">Contact — Nice</div>
+  <h2>Parlons de votre <span class="it">jardin.</span></h2>
+  <a class="tel-line" href="tel:+33623115509">06 23 11 55 09</a><br>
+  <a class="lnk" href="tel:+33623115509">Demander un devis gratuit</a>
+</div>
+
+<div class="cta-julian">
+  <span class="hide-m">Cette maquette vous plaît&nbsp;?</span>
+  <span class="it">Elle est à vous, offerte.</span>
+  <a href="tel:+33786776794">Appeler Julian</a>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script>
+(function(){
+  var reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var isMobile = matchMedia('(max-width:700px)').matches || 'ontouchstart' in window;
+  var N = isMobile ? 6000 : 14000;
+  var SEGS = 3; // 4 formes => 3 transitions
+
+  // ── Formes cibles ──────────────────────────────────────────────────────
+  function treeShape(n){
+    var a = new Float32Array(n*3);
+    for (var i = 0; i < n; i++) {
+      var r, th, y;
+      if (Math.random() < .3) {            // tronc
+        r = .09 * Math.sqrt(Math.random());
+        th = Math.random() * 6.283;
+        y = Math.random() * 1.15 - .85;
+        a[i*3] = Math.cos(th)*r; a[i*3+1] = y; a[i*3+2] = Math.sin(th)*r;
+      } else {                              // houppier en amas
+        var cx = (Math.random()-.5)*.9, cy = .62 + Math.random()*.75, cz = (Math.random()-.5)*.9;
+        var rr = .28 * Math.cbrt(Math.random());
+        var u = Math.random()*6.283, v = Math.acos(2*Math.random()-1);
+        a[i*3]   = cx + rr*Math.sin(v)*Math.cos(u);
+        a[i*3+1] = cy + rr*Math.cos(v)*.8;
+        a[i*3+2] = cz + rr*Math.sin(v)*Math.sin(u);
+      }
+    }
+    return a;
+  }
+  function hillsShape(n){
+    var a = new Float32Array(n*3);
+    for (var i = 0; i < n; i++) {
+      var x = (Math.random()-.5)*4.4, z = (Math.random()-.5)*3.2;
+      var y = -.55 + .34*Math.sin(x*1.5)*Math.cos(z*1.2) + .13*Math.sin(x*3.7+z*2.1);
+      a[i*3] = x; a[i*3+1] = y + (Math.random()-.5)*.03; a[i*3+2] = z;
+    }
+    return a;
+  }
+  function flowerShape(n){
+    var a = new Float32Array(n*3), GA = Math.PI*(3-Math.sqrt(5));
+    for (var i = 0; i < n; i++) {
+      var r = 1.35 * Math.sqrt(i/n), th = i * GA;
+      var y = -.15 + .22*r*r - .05*Math.cos(th*5);
+      a[i*3] = r*Math.cos(th); a[i*3+1] = y; a[i*3+2] = r*Math.sin(th)*.9;
+    }
+    return a;
+  }
+  function textShape(n, word){
+    var c = document.createElement('canvas'); c.width = 640; c.height = 160;
+    var x = c.getContext('2d');
+    x.fillStyle = '#fff'; x.font = '600 104px Inter Tight, Arial, sans-serif';
+    x.textAlign = 'center'; x.textBaseline = 'middle';
+    x.fillText(word, 320, 84);
+    var d = x.getImageData(0, 0, 640, 160).data, pts = [];
+    for (var yy = 0; yy < 160; yy += 2) for (var xx = 0; xx < 640; xx += 2)
+      if (d[(yy*640+xx)*4+3] > 128) pts.push([xx, yy]);
+    var a = new Float32Array(n*3);
+    for (var i = 0; i < n; i++) {
+      var p = pts[(Math.random()*pts.length)|0];
+      a[i*3]   = (p[0]-320)/640 * 3.4 + (Math.random()-.5)*.012;
+      a[i*3+1] = (84-p[1])/160 * .85 + (Math.random()-.5)*.012;
+      a[i*3+2] = (Math.random()-.5)*.16;
+    }
+    return a;
+  }
+
+  // ── Scène ──────────────────────────────────────────────────────────────
+  var renderer, scene, camera, points, ok = true;
+  try {
+    renderer = new THREE.WebGLRenderer({canvas: document.getElementById('gl'),
+      antialias: false, alpha: false, powerPreference: 'high-performance'});
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.setClearColor(0x070b09, 1);
+  } catch(e) { ok = false; }
+
+  if (ok) {
+    scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x070b09, .16);
+    camera = new THREE.PerspectiveCamera(52, innerWidth/innerHeight, .1, 40);
+
+    var shapes = [treeShape(N), hillsShape(N), flowerShape(N), textShape(N, 'EMERAUDE')];
+    // caméra par chapitre : plongée sur la fleur, recul adaptatif pour le texte
+    function textZ(){ var a = Math.max(.3, innerWidth/innerHeight);
+      return Math.min(8, Math.max(2.35, 1.85/(.488*a))); }
+    var CAM = [{y:.5,z:3.5},{y:.35,z:3.1},{y:1.55,z:2.1},{y:.05,z:textZ()}];
+    var LOOK = [.28, .12, -.05, .08];
+    addEventListener('resize', function(){ CAM[3].z = textZ(); });
+
+    var geo = new THREE.BufferGeometry();
+    var pos = new Float32Array(shapes[0]);
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    var col = new Float32Array(N*3);
+    var cLeaf = new THREE.Color(0x69c98f), cGold = new THREE.Color(0xd9b26a),
+        cCream = new THREE.Color(0xeef0ea), tmp = new THREE.Color();
+    var mixArr = new Float32Array(N), phase = new Float32Array(N);
+    for (var i = 0; i < N; i++) { mixArr[i] = Math.random(); phase[i] = Math.random()*6.283; }
+    geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+
+    // sprite doux
+    var sc = document.createElement('canvas'); sc.width = sc.height = 64;
+    var sx = sc.getContext('2d');
+    var g = sx.createRadialGradient(32,32,0,32,32,32);
+    g.addColorStop(0,'rgba(255,255,255,1)'); g.addColorStop(.4,'rgba(255,255,255,.55)');
+    g.addColorStop(1,'rgba(255,255,255,0)');
+    sx.fillStyle = g; sx.fillRect(0,0,64,64);
+    var tex = new THREE.CanvasTexture(sc);
+
+    var mat = new THREE.PointsMaterial({size: isMobile ? .05 : .036, map: tex,
+      vertexColors: true, transparent: true, opacity: .95, depthWrite: false,
+      blending: THREE.AdditiveBlending, sizeAttenuation: true});
+    points = new THREE.Points(geo, mat);
+    scene.add(points);
+
+    // ── Boucle ───────────────────────────────────────────────────────────
+    var mx = 0, my = 0, smx = 0, smy = 0;
+    if (!isMobile) addEventListener('mousemove', function(e){
+      mx = (e.clientX/innerWidth - .5); my = (e.clientY/innerHeight - .5);
+    });
+    addEventListener('resize', function(){
+      camera.aspect = innerWidth/innerHeight; camera.updateProjectionMatrix();
+      renderer.setSize(innerWidth, innerHeight);
+    });
+
+    function smooth(t){ return t*t*(3-2*t); }
+
+    var posAttr = geo.getAttribute('position'), colAttr = geo.getAttribute('color');
+    function frame(t){
+      t *= .001;
+      var range = document.querySelector('.journey').offsetHeight - innerHeight;
+      var p = Math.min(SEGS, Math.max(0, scrollY / (range/SEGS)));
+      var seg = Math.min(SEGS-1, p|0), f = smooth(Math.min(1, p - seg));
+      var A = shapes[seg], B = shapes[seg+1];
+      var swirl = reduced ? 0 : Math.sin(Math.PI*f) * .45;
+      var wob = reduced ? 0 : .012;
+
+      for (var i = 0; i < N; i++) {
+        var i3 = i*3, ph = phase[i];
+        var sx2 = Math.sin(t*.5+ph)*wob, sy2 = Math.cos(t*.4+ph*1.3)*wob;
+        var swx = Math.sin(ph*7+f*6.3)*swirl*mixArr[i], swy = Math.cos(ph*5+f*6.3)*swirl*(1-mixArr[i]);
+        posAttr.array[i3]   = A[i3]   + (B[i3]  -A[i3]  )*f + sx2 + swx*.3;
+        posAttr.array[i3+1] = A[i3+1] + (B[i3+1]-A[i3+1])*f + sy2 + swy*.22;
+        posAttr.array[i3+2] = A[i3+2] + (B[i3+2]-A[i3+2])*f + sx2*.7;
+      }
+      posAttr.needsUpdate = true;
+
+      // couleurs par segment
+      var gp = p/SEGS;
+      for (var j = 0; j < N; j++) {
+        var m = mixArr[j];
+        tmp.copy(cLeaf).lerp(cGold, m*.75 + gp*.25);
+        if (p > 2.4) tmp.lerp(cCream, (p-2.4)/.6 * .55);
+        colAttr.array[j*3] = tmp.r; colAttr.array[j*3+1] = tmp.g; colAttr.array[j*3+2] = tmp.b;
+      }
+      colAttr.needsUpdate = true;
+
+      points.rotation.y = reduced ? 0 : t*.06 + p*.55;
+      if (p > 2.55) points.rotation.y *= Math.max(0, 1-(p-2.55)/.45); // le texte face caméra
+
+      smx += (mx-smx)*.05; smy += (my-smy)*.05;
+      var ci = Math.min(SEGS, p), cs = Math.min(SEGS-0, ci|0), cf = smooth(Math.min(1, ci-cs));
+      var c0 = CAM[cs], c1 = CAM[Math.min(3, cs+1)];
+      camera.position.set(smx*.5, c0.y+(c1.y-c0.y)*cf + smy*-.3, c0.z+(c1.z-c0.z)*cf);
+      camera.lookAt(0, LOOK[cs]+(LOOK[Math.min(3,cs+1)]-LOOK[cs])*cf, 0);
+      scene.fog.density = .16 - (p > 2 ? (p-2)*.11 : 0); // le texte final reste net malgré le recul
+
+      renderer.render(scene, camera);
+
+      // HUD + étapes
+      updateHud(p);
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  } else {
+    document.body.classList.add('no3d');
+    document.querySelectorAll('.stage').forEach(function(s){ s.style.opacity = 1; s.style.position = 'relative'; s.style.transform = 'none'; s.style.margin = '18vh 6vw'; });
+    updateHud(0);
+  }
+
+  // ── HUD / étapes / loader ────────────────────────────────────────────
+  var stages = Array.prototype.slice.call(document.querySelectorAll('.stage'));
+  var chap = document.getElementById('chap'), pfill = document.getElementById('pfill');
+  var hint = document.getElementById('hint');
+  var CHAPS = ["L'arbre", "Les savoir-faire", "La méthode", "Votre jardin"];
+  var lastChap = -1;
+  function updateHud(p){
+    stages.forEach(function(s){
+      var d = Math.abs(p - +s.dataset.seg);
+      var o = Math.max(0, 1 - d/.42);
+      s.style.opacity = o;
+      s.style.transform = 'translateY(calc(-40% + ' + (p - +s.dataset.seg) * -34 + 'px))';
+      s.style.pointerEvents = o > .5 ? 'auto' : 'none';
+    });
+    var c = Math.round(p);
+    if (c !== lastChap) { lastChap = c;
+      chap.innerHTML = 'Chapitre 0' + (c+1) + '<b>' + CHAPS[c] + '</b>'; }
+    pfill.style.height = (p/SEGS*100) + '%';
+    hint.style.opacity = scrollY > 40 ? 0 : 1;
+  }
+
+  // Loader façon igloo : tirets qui se remplissent
+  var dash = document.getElementById('dash'), lp = 0;
+  var li = setInterval(function(){
+    lp = Math.min(100, lp + 7 + Math.random()*10);
+    var full = Math.round(lp/10), s = '';
+    for (var i = 0; i < 10; i++) s += i < full ? '═' : '─';
+    dash.textContent = s;
+    if (lp >= 100) { clearInterval(li);
+      setTimeout(function(){ document.getElementById('loader').classList.add('done'); }, 250); }
+  }, 90);
+})();
+</script>
+</body>
+</html>
